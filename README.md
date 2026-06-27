@@ -21,9 +21,13 @@ play **solo or online with up to 3 players**.
 - Networking is peer-to-peer (WebRTC via PeerJS) with STUN/TURN relays — no server needed.
 
 ## 🗺️ Arenas
-8 themed maps + 🎲 *Surprise Me* (a new one each level): Stone Keep, Lava Forge 🌋, Frozen Cavern ❄️,
-Crystal Mine, Toxic Swamp ☠️, Sky Temple, Void Arena, Desert Ruins — with hazards (lava/acid/ice),
-torches, crystals, and 4 layout styles (open/pillars/rooms/cross).
+8 image-inspired maps + 🎲 *Surprise Me* (a new one each level): **Container Yard** (foggy military base),
+**Industrial Arena**, **Tech Facility**, **Desert Ruins**, **Forest River**, **Lava Dungeon** 🌋,
+**Old Factory**, **City Street** 🌆 — each with its own palette, atmospheric fog, wall textures
+(corrugated metal, brick, wood, windows…), props (barrels, crates, trees, lamps, wrecked cars, torches,
+crystals), hazards (lava/acid/ice/water), and 4 layout styles (open/pillars/rooms/cross).
+
+Press the **⌂ MENU** button (top-left) any time to return to the main menu.
 
 ## ⌨️ Controls
 | Action | Keys |
