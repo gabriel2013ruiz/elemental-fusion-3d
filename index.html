@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Elemental Fusion 3D · 20 Levels</title>
+<meta name="description" content="First-person stealth: hide from the Seeker, freeze it for 8s, collect the elements and FUSE to clear 20 levels." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2306060f'/%3E%3Ccircle cx='5' cy='6' r='3' fill='%23ff5a1f'/%3E%3Ccircle cx='11' cy='6' r='3' fill='%232aa6ff'/%3E%3Ccircle cx='5' cy='11' r='3' fill='%23a06a30'/%3E%3Ccircle cx='11' cy='11' r='3' fill='%23bff0e6'/%3E%3C/svg%3E" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:'Rajdhani',sans-serif;background:#05050d;color:#eaeefc;display:flex;align-items:center;justify-content:center;
+    min-height:100vh;overflow:hidden;user-select:none}
+  h1,h2,h3,.title{font-family:'Orbitron',sans-serif}
+  #stage{position:relative;width:min(96vw,960px);aspect-ratio:8/5;max-height:96vh}
+  canvas{width:100%;height:100%;display:block;border-radius:12px;border:2px solid #20264a;
+    box-shadow:0 0 50px rgba(70,110,255,.22);background:#000;image-rendering:auto;touch-action:none}
+
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    padding:20px;border-radius:12px;background:radial-gradient(circle at 50% 35%,rgba(18,22,52,.9),rgba(3,3,12,.96));z-index:30;overflow:auto}
+  .overlay.hidden{display:none}
+  .overlay h1{font-size:clamp(24px,5vw,46px);font-weight:900;letter-spacing:2px;line-height:1.05;margin-bottom:6px;
+    background:linear-gradient(90deg,#ff5a1f,#2aa6ff,#a06a30,#bff0e6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .overlay .sub{font-size:clamp(14px,2.3vw,20px);color:#aab3e6;margin-bottom:16px;max-width:680px}
+  .elems{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;justify-content:center}
+  .chip{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;color:#cfd6ff;width:70px}
+  .chip .o{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:20px;box-shadow:0 0 16px currentColor,inset 0 0 8px rgba(255,255,255,.4)}
+  .how{font-size:clamp(12px,1.9vw,16px);color:#9fa9d8;line-height:1.8;margin-bottom:18px;max-width:640px;
+    background:rgba(255,255,255,.04);border:1px solid #232a52;border-radius:12px;padding:14px 18px}
+  .how b{color:#fff} .how .k{color:#ffd479}
+  kbd{font-family:'Rajdhani';font-weight:700;background:#1b2147;border:1px solid #39427e;border-bottom-width:3px;border-radius:6px;
+    padding:1px 7px;color:#e3e9ff;font-size:.95em;display:inline-block;margin:1px}
+  .btn{font-family:'Orbitron';font-weight:800;font-size:clamp(15px,2.5vw,19px);letter-spacing:1px;color:#06122a;
+    background:linear-gradient(180deg,#7fd0ff,#2aa6ff);border:none;border-radius:12px;padding:13px 34px;cursor:pointer;
+    box-shadow:0 6px 0 #1d5e96,0 10px 22px rgba(42,166,255,.45);transition:transform .06s,box-shadow .06s;text-transform:uppercase}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1d5e96}
+  .btn.green{background:linear-gradient(180deg,#9dffa6,#34c759);box-shadow:0 6px 0 #1d7a36,0 10px 22px rgba(52,199,89,.45)}
+  .btn.red{background:linear-gradient(180deg,#ff9d9d,#ff453a);box-shadow:0 6px 0 #9e2018,0 10px 22px rgba(255,69,58,.45)}
+  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .small{font-size:12px;color:#6b73a0;margin-top:14px}
+
+  /* touch controls */
+  #touch{position:absolute;inset:0;z-index:20;display:none;pointer-events:none}
+  body.touch #touch{display:block}
+  .tbtn{position:absolute;pointer-events:auto;font-family:'Orbitron';font-weight:800;border:2px solid rgba(255,255,255,.45);
+    border-radius:50%;display:grid;place-items:center;color:#fff;background:rgba(20,26,60,.5);backdrop-filter:blur(3px);text-align:center;line-height:1.05}
+  #freezeBtn{right:106px;bottom:18px;width:74px;height:74px;font-size:11px;background:rgba(90,180,255,.45)}
+  #fuseBtn{right:18px;bottom:18px;width:84px;height:84px;font-size:12px;background:rgba(255,90,31,.5);opacity:.45}
+  #fuseBtn.ready{opacity:1;border-color:#fff;animation:glow 1s infinite}
+  @keyframes glow{50%{box-shadow:0 0 24px #ffd36b}}
+  .hintbar{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;color:#5b6498;z-index:10;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="640" height="400"></canvas>
+
+  <!-- MENU -->
+  <div class="overlay" id="menu">
+    <h1>ELEMENTAL&nbsp;FUSION&nbsp;3D</h1>
+    <div class="sub">First-person. 20 levels. One powerful Seeker per maze — and it gets worse. 😈</div>
+    <div class="elems">
+      <div class="chip"><div class="o" style="color:#ff5a1f;background:radial-gradient(circle at 35% 30%,#ffd0a0,#ff5a1f)">🔥</div>FIRE<br><span style="color:#7c87bd">(you start with this)</span></div>
+      <div class="chip"><div class="o" style="color:#2aa6ff;background:radial-gradient(circle at 35% 30%,#bfe8ff,#2aa6ff)">💧</div>WATER</div>
+      <div class="chip"><div class="o" style="color:#c89b5a;background:radial-gradient(circle at 35% 30%,#e7c79a,#8a5a2b)">🪨</div>EARTH</div>
+      <div class="chip"><div class="o" style="color:#bff0e6;background:radial-gradient(circle at 35% 30%,#fff,#79d6c8)">🌪️</div>WIND</div>
+    </div>
+    <div class="how" id="howText"></div>
+    <div class="row">
+      <button class="btn" id="playBtn">▶ Start Level 1</button>
+      <button class="btn green" id="contBtn" style="display:none">▶ Continue</button>
+    </div>
+    <div class="small">Tip: click the screen to lock the mouse for smooth looking. Press <kbd>Esc</kbd> to release.</div>
+  </div>
+
+  <!-- LEVEL INTRO -->
+  <div class="overlay hidden" id="intro">
+    <h1 id="introTitle">LEVEL 1</h1>
+    <div class="sub" id="introFeature"></div>
+    <div class="how" id="introGoal"></div>
+    <button class="btn" id="goBtn">▶ Enter</button>
+  </div>
+
+  <!-- LEVEL CLEAR -->
+  <div class="overlay hidden" id="clear">
+    <h1 class="title" style="color:#9dffa6;-webkit-text-fill-color:#9dffa6">LEVEL CLEAR!</h1>
+    <div class="sub" id="clearSub"></div>
+    <button class="btn green" id="nextBtn">▶ Next Level</button>
+  </div>
+
+  <!-- WIN -->
+  <div class="overlay hidden" id="win">
+    <h1>🏆 YOU MASTERED ALL 20 LEVELS 🏆</h1>
+    <div class="sub">You fused fire, water, earth and wind and defeated every Seeker. Legend. 🔥💧🪨🌪️</div>
+    <button class="btn green" id="winBtn">↻ Play Again</button>
+  </div>
+
+  <!-- LOSE -->
+  <div class="overlay hidden" id="lose">
+    <h1 style="-webkit-text-fill-color:#ff8a8a;color:#ff8a8a">CAUGHT!</h1>
+    <div class="sub" id="loseSub">The Seeker got you. Use <b>FREEZE (Space)</b> when it's close!</div>
+    <button class="btn red" id="retryBtn">↻ Retry Level</button>
+  </div>
+
+  <!-- PAUSE / HELP -->
+  <div class="overlay hidden" id="help">
+    <h1 class="title" style="-webkit-text-fill-color:#bfe8ff;color:#bfe8ff">HOW TO PLAY</h1>
+    <div class="how" id="helpText"></div>
+    <button class="btn" id="resumeBtn">▶ Resume</button>
+  </div>
+
+  <!-- TOUCH -->
+  <div id="touch">
+    <div class="tbtn" id="freezeBtn">FREEZE<br>8s</div>
+    <div class="tbtn" id="fuseBtn">FUSE</div>
+  </div>
+
+  <div class="hintbar" id="hintbar">WASD move · Arrows/Mouse look · SPACE freeze · F fuse · M map · P pause</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const W=cv.width, H=cv.height;
+const $=id=>document.getElementById(id);
+
+/* ---------------- elements ---------------- */
+const ELEMS=[
+  {key:'fire', name:'FIRE', color:'#ff5a1f', glow:'#ffb347', emoji:'🔥'},
+  {key:'water',name:'WATER',color:'#2aa6ff', glow:'#bfe8ff', emoji:'💧'},
+  {key:'earth',name:'EARTH',color:'#a06a30', glow:'#e7c79a', emoji:'🪨'},
+  {key:'wind', name:'WIND', color:'#bff0e6', glow:'#ffffff', emoji:'🌪️'},
+];
+
+/* ---------------- 20 level feature progression ---------------- */
+const FEATURES=[
+  "Tutorial — find the orb, then press F to FUSE.",      //1
+  "A bigger maze to get lost in.",                       //2
+  "EARTH added — collect 2 orbs before fusing.",         //3
+  "The Seeker is faster now.",                           //4
+  "WIND added — all 4 elements needed!",                 //5
+  "FOG: your sight is limited. Stay sharp.",             //6
+  "TWO Seekers hunt you.",                               //7
+  "Seekers navigate the maze smarter.",                  //8
+  "Thicker fog — you see even less.",                    //9
+  "A sprawling labyrinth.",                              //10
+  "THREE Seekers.",                                      //11
+  "Seekers RAGE & sprint when they spot you.",           //12
+  "Fewer freeze charges — use them wisely.",             //13
+  "A massive maze.",                                     //14
+  "Heavy fog — nearly blind.",                           //15
+  "FOUR Seekers.",                                       //16
+  "Faster, raging Seekers everywhere.",                  //17
+  "Tiny vision and speed-demon Seekers.",                //18
+  "FIVE Seekers in a huge maze.",                        //19
+  "FINAL: the MEGA-SEEKER. Fuse to end it all!",         //20
+];
+function cfg(n){
+  const need = n<3?2 : n<5?3 : 4;                 // total elements incl. fire
+  const dim  = Math.min(25, 9 + 2*Math.floor((n-1)/2)); // odd maze size
+  let seekers=1;
+  if(n>=7) seekers=2; if(n>=11) seekers=3; if(n>=16) seekers=4; if(n>=19) seekers=5;
+  if(n===20) seekers=1;                           // single mega-seeker
+  const spd = 1.4 + n*0.07;                        // cells / second
+  let vision=99;
+  if(n>=6) vision=8; if(n>=9) vision=6.5; if(n>=15) vision=5; if(n>=18) vision=4;
+  let freezes=4; if(n>=13) freezes=3; if(n>=18) freezes=2;
+  const rage = n>=12;
+  const boss = n===20;
+  return {n,need,dim,seekers,spd,vision,freezes,rage,boss,feature:FEATURES[n-1]};
+}
+
+/* ---------------- maze gen ---------------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function genMaze(dim){
+  const g=Array.from({length:dim},()=>Array(dim).fill(1));
+  (function carve(cx,cy){
+    g[cy][cx]=0;
+    for(const [dx,dy] of shuffle([[0,-2],[0,2],[-2,0],[2,0]])){
+      const nx=cx+dx, ny=cy+dy;
+      if(nx>0&&ny>0&&nx<dim-1&&ny<dim-1&&g[ny][nx]===1){ g[cy+dy/2][cx+dx/2]=0; carve(nx,ny); }
+    }
+  })(1,1);
+  // open a few extra walls so it's less claustrophobic
+  for(let i=0;i<dim;i++){ const x=1+2*((Math.random()*((dim-1)/2))|0), y=1+2*((Math.random()*((dim-1)/2))|0);
+    if(x>1&&x<dim-1&&y>1&&y<dim-1&&Math.random()<0.5) g[y][x===1?2:x-1]=0; }
+  return g;
+}
+function openCells(map){const r=[];for(let y=1;y<map.length-1;y++)for(let x=1;x<map.length-1;x++)if(map[y][x]===0)r.push({x,y});return r;}
+
+/* ---------------- BFS distance field (for seeker pathing) ---------------- */
+function bfs(map,sx,sy){
+  const dim=map.length, dst=Array.from({length:dim},()=>Array(dim).fill(-1));
+  const q=[[sx,sy]]; dst[sy][sx]=0; let h=0;
+  while(h<q.length){ const [x,y]=q[h++];
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+dx,ny=y+dy;
+      if(nx>=0&&ny>=0&&nx<dim&&ny<dim&&map[ny][nx]===0&&dst[ny][nx]<0){ dst[ny][nx]=dst[y][x]+1; q.push([nx,ny]); } } }
+  return dst;
+}
+
+/* ---------------- game state ---------------- */
+let state='menu', level=1, maxLevel=1;
+let map, dim, conf, player, seekers, orbs, particles, dmap, dmapT, frozen, shake, hurt, fuseFx, levelClearT;
+const keys={};
+let mouseLook=true;
+let touchMove=null, touchLook=null; // {id, sx, sy, dx, dy}
+
+function startLevel(n){
+  level=n; conf=cfg(n);
+  map=genMaze(conf.dim); dim=conf.dim;
+  const cells=openCells(map);
+  // player at corner, facing whichever neighbouring corridor is open (so you see depth)
+  let spawnA = 0;
+  if(map[1][2]===0) spawnA=0;            // east
+  else if(map[2][1]===0) spawnA=Math.PI/2; // south
+  player={x:1.5,y:1.5,a:spawnA,hp:100,inv:[true,false,false,false],freezes:conf.freezes,sprint:0};
+  // pick far cells for orbs (elements 1..need-1) and seekers
+  const far=cells.slice().sort((p,q)=> (dist2(q,{x:1,y:1})-dist2(p,{x:1,y:1})) );
+  orbs=[];
+  let idx=0;
+  for(let e=1;e<conf.need;e++){ const c=far[idx]; idx+=Math.max(1,(far.length/ (conf.need+ conf.seekers))|0);
+    orbs.push({e, x:c.x+0.5, y:c.y+0.5, got:false}); }
+  seekers=[];
+  for(let s=0;s<conf.seekers;s++){ const c=far[Math.min(far.length-1, idx)]; idx+=Math.max(1,(far.length/(conf.seekers+1))|0);
+    seekers.push(mkSeeker(c.x+0.5,c.y+0.5)); }
+  particles=[]; dmap=null; dmapT=0; frozen=0; shake=0; hurt=0; fuseFx=null; levelClearT=0;
+  maxLevel=Math.max(maxLevel,n);
+  updateFuseBtn();
+}
+function mkSeeker(x,y){ return {x,y,tx:x,ty:y,dead:false,deathT:0,see:false,rageT:0,eye:Math.random()*6,
+  r: (conf.boss?0.45:0.32) }; }
+function dist2(a,b){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;}
+function dist(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by);}
+const allGot=()=>player.inv.slice(0,conf.need).every(Boolean);
+
+/* ---------------- collision ---------------- */
+function solid(px,py){ if(px<0||py<0||px>=dim||py>=dim) return true; return map[py|0][px|0]!==0; }
+function moveEnt(ent,vx,vy,rad){
+  const R=rad||0.22;
+  let nx=ent.x+vx;
+  if(!solid(nx+Math.sign(vx)*R, ent.y) ) ent.x=nx;
+  let ny=ent.y+vy;
+  if(!solid(ent.x, ny+Math.sign(vy)*R) ) ent.y=ny;
+}
+// line of sight between two points (grid DDA sampling)
+function losClear(ax,ay,bx,by){
+  const steps=Math.ceil(dist(ax,ay,bx,by)*4);
+  for(let i=1;i<steps;i++){ const t=i/steps, x=ax+(bx-ax)*t, y=ay+(by-ay)*t; if(solid(x,y)) return false; }
+  return true;
+}
+
+/* ---------------- actions ---------------- */
+function doFreeze(){
+  if(state!=='play'||player.freezes<=0||frozen>0) return;
+  player.freezes--; frozen=8.0; shake=Math.max(shake,10);
+  spawn(player.x,player.y,'#9fe0ff',24,3,.6);
+  updateFuseBtn();
+}
+function doFuse(){
+  if(state!=='play'||!allGot()||fuseFx) return;
+  fuseFx={t:0}; shake=20;
+  for(const E of ELEMS) spawn(player.x,player.y,E.color,18,4,.8);
+}
+function spawn(x,y,color,n,spd,life){
+  for(let i=0;i<n;i++){const a=Math.random()*6.28, s=spd*(0.3+Math.random());
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,z:Math.random()*0.4+0.2,life:life*(0.6+Math.random()*0.7),max:life,color});}
+}
+
+/* ---------------- update ---------------- */
+function update(dt){
+  // ----- player look & move -----
+  const turn=2.6;
+  if(keys['arrowleft']) player.a-=turn*dt;
+  if(keys['arrowright']) player.a+=turn*dt;
+  if(touchLook){ player.a+=touchLook.dx*0.005; touchLook.dx=0; }
+  const sprint = keys['shift']?1.7:1;
+  const spd=2.7*sprint;
+  let fx=Math.cos(player.a), fy=Math.sin(player.a), sx=-fy, sy=fx;
+  let mvx=0,mvy=0;
+  if(keys['w']||keys['arrowup']){ mvx+=fx; mvy+=fy; }
+  if(keys['s']||keys['arrowdown']){ mvx-=fx; mvy-=fy; }
+  if(keys['a']){ mvx+=sx; mvy+=sy; }
+  if(keys['d']){ mvx-=sx; mvy-=sy; }
+  if(touchMove){ mvx+=fx*(-touchMove.dy/40)+sx*(touchMove.dx/40); mvy+=fy*(-touchMove.dy/40)+sy*(touchMove.dx/40); }
+  const ml=Math.hypot(mvx,mvy); if(ml>1){ mvx/=ml; mvy/=ml; }
+  moveEnt(player, mvx*spd*dt, mvy*spd*dt);
+
+  // ----- orbs -----
+  for(const o of orbs){ if(!o.got && dist(player.x,player.y,o.x,o.y)<0.55){ o.got=true; player.inv[o.e]=true;
+    spawn(o.x,o.y,ELEMS[o.e].color,26,3,.7); shake=Math.max(shake,6); updateFuseBtn(); } }
+
+  // ----- freeze timer -----
+  if(frozen>0) frozen=Math.max(0,frozen-dt);
+
+  // ----- seeker BFS path refresh -----
+  dmapT-=dt;
+  if(dmapT<=0){ dmap=bfs(map, player.x|0, player.y|0); dmapT=0.25; }
+
+  // ----- seekers -----
+  let anyAlive=false;
+  for(const s of seekers){
+    if(s.dead){ s.deathT+=dt; continue; }
+    anyAlive=true; s.eye+=dt;
+    const d=dist(s.x,s.y,player.x,player.y);
+    s.see = d<conf.vision+2 && losClear(s.x,s.y,player.x,player.y);
+    if(conf.rage){ s.rageT = s.see?0.6:Math.max(0,s.rageT-dt); }
+    let sp=conf.spd*(s.rageT>0?1.6:1);
+    if(frozen>0) sp=0;
+    if(sp>0 && dmap){
+      // step toward lower BFS distance
+      const cx=s.x|0, cy=s.y|0; let best=null, bestD=dmap[cy] && dmap[cy][cx]>=0?dmap[cy][cx]:1e9;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx,ny=cy+dy;
+        if(map[ny] && map[ny][nx]===0 && dmap[ny][nx]>=0 && dmap[ny][nx]<bestD){ bestD=dmap[ny][nx]; best=[nx,ny]; } }
+      const tx=best?best[0]+0.5:player.x, ty=best?best[1]+0.5:player.y;
+      const ddx=tx-s.x, ddy=ty-s.y, dd=Math.hypot(ddx,ddy)||1;
+      moveEnt(s, ddx/dd*sp*dt, ddy/dd*sp*dt, s.r);
+      if(s.see && Math.random()<0.4) spawn(s.x,s.y,'#ff2b4e',1,1,.4);
+    }
+    // catch
+    if(d<0.45+ (s.r-0.32)){
+      player.hp-= (conf.boss?40:30)*dt; hurt=0.3; shake=Math.max(shake,8);
+      if(player.hp<=0){ player.hp=0; lose(); return; }
+    }
+  }
+
+  // ----- fuse effect -----
+  if(fuseFx){ fuseFx.t+=dt;
+    if(fuseFx.t<0.5){ for(const E of ELEMS) if(Math.random()<0.6) spawn(player.x,player.y,E.color,1,5,.6); }
+    if(fuseFx.t>0.45){ for(const s of seekers){ if(!s.dead){ s.dead=true; s.deathT=0;
+      for(const E of ELEMS) spawn(s.x,s.y,E.color,16,4,.9); } } }
+    if(fuseFx.t>1.5 && state==='play'){ clearLevel(); }
+  }
+  hurt=Math.max(0,hurt-dt);
+
+  // ----- particles -----
+  for(let i=particles.length-1;i>=0;i--){ const p=particles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.9; p.vy*=0.9; p.life-=dt; if(p.life<=0) particles.splice(i,1); }
+  shake=Math.max(0,shake- shake*5*dt -0.04);
+}
+
+/* ---------------- raycaster render ---------------- */
+const zbuf=new Float32Array(W);
+function render(){
+  const ox=shake>0?(Math.random()-.5)*shake:0, oy=shake>0?(Math.random()-.5)*shake:0;
+  // ceiling & floor
+  const fog=conf.vision<20;
+  let g=ctx.createLinearGradient(0,0,0,H/2);
+  g.addColorStop(0, fog?'#05060c':'#0a1024'); g.addColorStop(1,'#0c1330'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H/2);
+  g=ctx.createLinearGradient(0,H/2,0,H);
+  g.addColorStop(0,'#161a2e'); g.addColorStop(1, fog?'#04050a':'#23283f'); ctx.fillStyle=g; ctx.fillRect(0,H/2,W,H/2);
+
+  const posX=player.x, posY=player.y;
+  const dirX=Math.cos(player.a), dirY=Math.sin(player.a);
+  const planeX=-dirY*0.66, planeY=dirX*0.66;
+
+  for(let x=0;x<W;x++){
+    const camX=2*x/W-1;
+    const rdX=dirX+planeX*camX, rdY=dirY+planeY*camX;
+    let mapX=posX|0, mapY=posY|0;
+    const ddX=Math.abs(1/rdX), ddY=Math.abs(1/rdY);
+    let stepX,stepY,sideX,sideY;
+    if(rdX<0){stepX=-1;sideX=(posX-mapX)*ddX;}else{stepX=1;sideX=(mapX+1-posX)*ddX;}
+    if(rdY<0){stepY=-1;sideY=(posY-mapY)*ddY;}else{stepY=1;sideY=(mapY+1-posY)*ddY;}
+    let hit=0,side=0,guard=0;
+    while(!hit && guard++<64){
+      if(sideX<sideY){sideX+=ddX;mapX+=stepX;side=0;}else{sideY+=ddY;mapY+=stepY;side=1;}
+      if(mapX<0||mapY<0||mapX>=dim||mapY>=dim){hit=2;break;}
+      if(map[mapY][mapX]>0) hit=1;
+    }
+    let perp= side===0 ? (mapX-posX+(1-stepX)/2)/rdX : (mapY-posY+(1-stepY)/2)/rdY;
+    if(perp<0.01) perp=0.01;
+    zbuf[x]=perp;
+    if(hit!==1) continue;
+    const lh=(H/perp)|0;
+    let y0=(-lh/2+H/2)|0, y1=(lh/2+H/2)|0; if(y0<0)y0=0; if(y1>H)y1=H;
+    // shade by distance + fog + wall side
+    let bright= 1/(1+perp*perp*0.06);
+    if(side===1) bright*=0.7;
+    if(fog) bright*= Math.max(0, Math.min(1,(conf.vision-perp+1)/conf.vision));
+    bright=Math.max(0.04,Math.min(1,bright));
+    // wall color tint shifts slightly by depth so it isn't flat
+    const r=(70*bright)|0, gg=(90*bright)|0, b=(150*bright)|0;
+    ctx.fillStyle='rgb('+r+','+gg+','+b+')';
+    ctx.fillRect(x+ox, y0+oy, 1, y1-y0);
+  }
+
+  // ---- sprites (orbs + seekers + particles) ----
+  const sprites=[];
+  for(const o of orbs){ if(!o.got) sprites.push({x:o.x,y:o.y,kind:'orb',e:o.e}); }
+  for(const s of seekers){ if(!s.dead||s.deathT<0.5) sprites.push({x:s.x,y:s.y,kind:'seeker',s}); }
+  for(const p of particles) sprites.push({x:p.x,y:p.y,kind:'part',p});
+  // sort far->near
+  for(const sp of sprites) sp.d=dist2(sp,player);
+  sprites.sort((a,b)=>b.d-a.d);
+
+  const invDet=1/(planeX*dirY-dirX*planeY);
+  for(const sp of sprites){
+    const dx=sp.x-posX, dy=sp.y-posY;
+    const tX=invDet*(dirY*dx-dirX*dy);
+    const tY=invDet*(-planeY*dx+planeX*dy); // depth
+    if(tY<=0.15) continue;
+    const scrX=((W/2)*(1+tX/tY))|0;
+    if(scrX<0||scrX>=W) continue;
+    if(tY>=zbuf[scrX]) continue; // occluded by wall
+    let fogB=1; if(fog) fogB=Math.max(0,Math.min(1,(conf.vision-tY+1)/conf.vision));
+    if(sp.kind==='part'){
+      const size=Math.max(1,(H/tY)*0.04*(sp.p.life/sp.p.max));
+      ctx.globalAlpha=Math.max(0,sp.p.life/sp.p.max)*fogB;
+      ctx.fillStyle=sp.p.color; ctx.beginPath();ctx.arc(scrX+ox, (H/2 - (H/tY)*sp.p.z)+oy, size,0,6.3);ctx.fill();
+      ctx.globalAlpha=1; continue;
+    }
+    const sh=Math.abs(H/tY);
+    if(sp.kind==='orb'){
+      const E=ELEMS[sp.e], R=sh*0.16, cyp=H/2+oy;
+      const grd=ctx.createRadialGradient(scrX,cyp,1,scrX,cyp,R*2);
+      grd.addColorStop(0,E.glow); grd.addColorStop(.5,E.color); grd.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.globalAlpha=fogB; ctx.fillStyle=grd; ctx.beginPath();ctx.arc(scrX+ox,cyp,R*2,0,6.3);ctx.fill();
+      ctx.fillStyle=E.color; ctx.beginPath();ctx.arc(scrX+ox,cyp,R,0,6.3);ctx.fill();
+      if(R>9){ ctx.font=(R*1.2|0)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(E.emoji,scrX+ox,cyp+1); }
+      ctx.globalAlpha=1;
+    } else { // seeker
+      const s=sp.s; const dead=s.dead;
+      const R=sh*(conf.boss?0.34:0.24); const cyp=H/2 + sh*0.10 + oy;
+      ctx.globalAlpha=(dead?Math.max(0,1-s.deathT/0.5):1)*fogB;
+      // aura
+      const chasing=s.see;
+      const ag=ctx.createRadialGradient(scrX,cyp,2,scrX,cyp,R*1.7);
+      ag.addColorStop(0, chasing?'rgba(255,40,60,.5)':'rgba(150,40,200,.35)'); ag.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=ag; ctx.beginPath();ctx.arc(scrX+ox,cyp,R*1.7,0,6.3);ctx.fill();
+      // body
+      const bg=ctx.createRadialGradient(scrX-R*0.3,cyp-R*0.3,2,scrX,cyp,R);
+      bg.addColorStop(0,'#5a2030'); bg.addColorStop(1,'#140510');
+      ctx.fillStyle=bg; ctx.beginPath();ctx.arc(scrX+ox,cyp,R,0,6.3);ctx.fill();
+      ctx.lineWidth=Math.max(1,R*0.12); ctx.strokeStyle= frozen>0?'#9fe0ff':(chasing?'#ff2b4e':'#7a3a9a');
+      ctx.beginPath();ctx.arc(scrX+ox,cyp,R,0,6.3);ctx.stroke();
+      // eyes
+      const ey=R*0.16;
+      ctx.fillStyle= frozen>0?'#bfe8ff':'#ff3b3b';
+      ctx.beginPath();ctx.arc(scrX+ox-R*0.35,cyp-R*0.15,ey,0,6.3);ctx.fill();
+      ctx.beginPath();ctx.arc(scrX+ox+R*0.35,cyp-R*0.15,ey,0,6.3);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // ---- weapon/hands hint: elemental orb in hand (fire) ----
+  drawHand();
+  // ---- HUD ----
+  drawHUD();
+  drawMinimap();
+}
+
+function drawHand(){
+  // a glowing fire orb at bottom-center representing your readied element
+  const cx=W*0.82, cy=H*0.86, R=18+Math.sin(performance.now()/300)*2;
+  const E=ELEMS[0];
+  const g=ctx.createRadialGradient(cx,cy,2,cx,cy,R*1.6);
+  g.addColorStop(0,E.glow); g.addColorStop(.5,E.color); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.beginPath();ctx.arc(cx,cy,R*1.6,0,6.3);ctx.fill();
+  ctx.fillStyle=E.color; ctx.beginPath();ctx.arc(cx,cy,R,0,6.3);ctx.fill();
+  ctx.font='18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🔥',cx,cy+1);
+  // crosshair
+  ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(W/2-7,H/2);ctx.lineTo(W/2+7,H/2);ctx.moveTo(W/2,H/2-7);ctx.lineTo(W/2,H/2+7);ctx.stroke();
+}
+
+function drawHUD(){
+  // HP
+  const bw=180,bh=13,bx=14,by=14;
+  ctx.fillStyle='rgba(0,0,0,.5)'; rr(bx-3,by-3,bw+6,bh+6,5); ctx.fill();
+  ctx.fillStyle='#2a0d12'; rr(bx,by,bw,bh,4); ctx.fill();
+  const hp=player.hp/100, hg=ctx.createLinearGradient(bx,0,bx+bw,0); hg.addColorStop(0,'#ff4d4d');hg.addColorStop(1,'#ff9a3d');
+  ctx.fillStyle=hp>0.3?hg:'#ff3030'; rr(bx,by,bw*hp,bh,4); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='700 12px Rajdhani,sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText('HP', bx+bw+8, by+bh/2);
+
+  // elements
+  for(let i=0;i<conf.need;i++){ const E=ELEMS[i], gx=14+i*34, gy=36, has=player.inv[i];
+    ctx.globalAlpha=has?1:0.28; ctx.fillStyle=has?E.color:'#444c70';
+    ctx.beginPath();ctx.arc(gx+13,gy+13,13,0,6.3);ctx.fill();
+    ctx.globalAlpha=1; ctx.font='13px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(E.emoji,gx+13,gy+14); }
+
+  // freeze charges
+  ctx.textAlign='right'; ctx.textBaseline='top'; ctx.font='700 13px Rajdhani,sans-serif';
+  ctx.fillStyle= frozen>0?'#9fe0ff':(player.freezes>0?'#bfe8ff':'#6b73a0');
+  ctx.fillText(frozen>0? ('❄ FROZEN '+frozen.toFixed(1)+'s') : ('❄ FREEZE x'+player.freezes+'  [SPACE]'), W-14, 14);
+
+  // level + feature
+  ctx.textAlign='center'; ctx.fillStyle='#cfd6ff'; ctx.font='800 13px Orbitron,sans-serif';
+  ctx.fillText('LEVEL '+level+' / 20', W/2, 12);
+  // prompt
+  ctx.font='800 16px Orbitron,sans-serif';
+  if(allGot() && !fuseFx){ const a=0.6+Math.sin(performance.now()/120)*0.4;
+    ctx.fillStyle='rgba(255,220,120,'+a+')'; ctx.fillText('⚡ PRESS  F  TO FUSE! ⚡', W/2, 30); }
+  else { const got=player.inv.slice(0,conf.need).filter(Boolean).length;
+    ctx.fillStyle='rgba(200,210,255,.85)'; ctx.font='700 13px Rajdhani,sans-serif';
+    ctx.fillText('Find elements: '+got+' / '+conf.need, W/2, 30); }
+
+  // vignettes
+  if(hurt>0){ vign('rgba(255,0,0,', hurt*0.6); }
+  else if(player.hp<35){ vign('rgba(180,0,0,', (1-player.hp/35)*0.4*(0.6+0.4*Math.sin(performance.now()/160))); }
+  if(frozen>0) vign('rgba(120,200,255,', 0.12);
+}
+function vign(rgba,a){ ctx.save(); const v=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.72);
+  v.addColorStop(0,rgba+'0)'); v.addColorStop(1,rgba+a+')'); ctx.fillStyle=v; ctx.fillRect(0,0,W,H); ctx.restore(); }
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+let mapBig=false;
+function drawMinimap(){
+  const cell= mapBig?10:5, pad=8, mw=dim*cell;
+  const ox=W-mw-pad, oy=H-mw-pad;
+  ctx.save(); ctx.globalAlpha=0.85;
+  ctx.fillStyle='rgba(5,8,20,.8)'; ctx.fillRect(ox-2,oy-2,mw+4,mw+4);
+  for(let y=0;y<dim;y++)for(let x=0;x<dim;x++){ if(map[y][x]){ ctx.fillStyle='#2a3160'; ctx.fillRect(ox+x*cell,oy+y*cell,cell,cell);} }
+  for(const o of orbs){ if(!o.got){ ctx.fillStyle=ELEMS[o.e].color; ctx.fillRect(ox+(o.x-0.5)*cell,oy+(o.y-0.5)*cell+0,cell,cell);} }
+  for(const s of seekers){ if(!s.dead){ ctx.fillStyle= frozen>0?'#9fe0ff':'#ff3b3b'; ctx.beginPath();ctx.arc(ox+s.x*cell,oy+s.y*cell,cell*0.6,0,6.3);ctx.fill(); } }
+  // player
+  ctx.fillStyle='#7fe0ff'; ctx.beginPath();ctx.arc(ox+player.x*cell,oy+player.y*cell,cell*0.7,0,6.3);ctx.fill();
+  ctx.strokeStyle='#7fe0ff'; ctx.lineWidth=1.5; ctx.beginPath();
+  ctx.moveTo(ox+player.x*cell,oy+player.y*cell); ctx.lineTo(ox+(player.x+Math.cos(player.a)*1.4)*cell, oy+(player.y+Math.sin(player.a)*1.4)*cell); ctx.stroke();
+  ctx.restore();
+}
+
+/* ---------------- loop ---------------- */
+let last=0, raf=0;
+function frame(now){
+  if(state!=='play'){ return; }
+  const dt=Math.min(0.05,(now-last)/1000||0.016); last=now;
+  update(dt);
+  if(state==='play') render();
+  raf=requestAnimationFrame(frame);
+}
+
+/* ---------------- flow ---------------- */
+function showIntro(n){
+  const c=cfg(n);
+  $('introTitle').textContent='LEVEL '+n+(c.boss?' — FINAL':'');
+  $('introFeature').textContent='✨ '+c.feature;
+  const collect = c.need-1;
+  $('introGoal').innerHTML=
+    '<b>Goal:</b> collect <b>'+collect+'</b> more element'+(collect===1?'':'s')+', then press <span class="k">F</span> to <b>FUSE</b> and destroy the Seeker'+(c.seekers>1?'s':'')+'.<br>'+
+    '<b>Seekers:</b> '+c.seekers+(c.rage?' (they rage & sprint when they see you!)':'')+' &nbsp;·&nbsp; <b>Freeze charges:</b> '+c.freezes+' (each stops them 8s)'+
+    (c.vision<20?'<br><span style="color:#ff8a6b">⚠ Limited vision — watch the dark.</span>':'');
+  hideAll(); $('intro').classList.remove('hidden'); state='intro';
+}
+function enterLevel(){ startLevel(level); hideAll(); state='play'; last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(frame); }
+function clearLevel(){
+  state='clear';
+  if(level>=20){ hideAll(); $('win').classList.remove('hidden'); state='won'; return; }
+  $('clearSub').innerHTML='Seeker destroyed! Up next: <b>'+FEATURES[level]+'</b>';
+  hideAll(); $('clear').classList.remove('hidden');
+}
+function lose(){ state='lose'; hideAll(); $('lose').classList.remove('hidden'); }
+function hideAll(){ for(const id of ['menu','intro','clear','win','lose','help']) $(id).classList.add('hidden'); }
+function updateFuseBtn(){ const b=$('fuseBtn'); if(b){ if(allGot()) b.classList.add('ready'); else b.classList.remove('ready'); } }
+
+/* ---------------- help text ---------------- */
+const HOW='<b>You are hunted.</b> A powerful Seeker roams each maze. You can\'t fight it head-on — but you carry <b style="color:#ff5a1f">🔥 FIRE</b> from the start.<br><br>'+
+  '🎯 <b>Find the other elements</b> (💧🪨🌪️) hidden in the maze, then press <span class="k">F</span> to <b>FUSE all your powers</b> into one blast that destroys the Seeker and clears the level.<br><br>'+
+  '❄ <b>When a Seeker gets close, press <span class="k">SPACE</span> to FREEZE</b> every Seeker for <b>8 seconds</b> — your escape move. You have limited charges per level.<br><br>'+
+  '<b>Controls</b><br>'+
+  '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &amp; strafe · <kbd>←</kbd><kbd>→</kbd> or <b>mouse</b> look · <kbd>Shift</kbd> sprint<br>'+
+  '<kbd>Space</kbd> Freeze (8s) · <kbd>F</kbd> Fuse · <kbd>M</kbd> map size · <kbd>P</kbd> pause<br>'+
+  '<span style="color:#7c87bd">On phone: left side drag = move, right side drag = look, buttons = Freeze / Fuse.</span>';
+$('howText').innerHTML=HOW;
+$('helpText').innerHTML=HOW;
+
+/* ---------------- input ---------------- */
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase(); keys[k]=true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  if(state==='play'){
+    if(k===' ') doFreeze();
+    if(k==='f') doFuse();
+    if(k==='m') mapBig=!mapBig;
+    if(k==='p'){ pause(); }
+  } else if(k==='p' && state==='paused'){ resume(); }
+});
+window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+
+// mouse look (pointer lock)
+cv.addEventListener('click',()=>{ if(state==='play' && cv.requestPointerLock) cv.requestPointerLock(); });
+document.addEventListener('mousemove',e=>{ if(state==='play' && document.pointerLockElement===cv){ player.a+=e.movementX*0.0024; } });
+
+// touch
+function tp(t){ const r=cv.getBoundingClientRect(); return {x:t.clientX-r.left, y:t.clientY-r.top, w:r.width}; }
+cv.addEventListener('touchstart',e=>{ if(state!=='play') return; e.preventDefault();
+  for(const t of e.changedTouches){ const p=tp(t);
+    if(p.x< p.w/2){ if(!touchMove) touchMove={id:t.identifier,sx:p.x,sy:p.y,dx:0,dy:0}; }
+    else { if(!touchLook) touchLook={id:t.identifier,sx:p.x,dx:0}; } }
+},{passive:false});
+cv.addEventListener('touchmove',e=>{ if(state!=='play') return; e.preventDefault();
+  for(const t of e.changedTouches){ const p=tp(t);
+    if(touchMove&&t.identifier===touchMove.id){ touchMove.dx=p.x-touchMove.sx; touchMove.dy=p.y-touchMove.sy; }
+    if(touchLook&&t.identifier===touchLook.id){ touchLook.dx=(p.x-touchLook.sx); touchLook.sx=p.x; } }
+},{passive:false});
+function tend(e){ for(const t of e.changedTouches){ if(touchMove&&t.identifier===touchMove.id) touchMove=null; if(touchLook&&t.identifier===touchLook.id) touchLook=null; } }
+cv.addEventListener('touchend',tend,{passive:false}); cv.addEventListener('touchcancel',tend,{passive:false});
+
+/* ---------------- pause ---------------- */
+function pause(){ if(state!=='play') return; state='paused'; hideAll(); $('help').classList.remove('hidden'); }
+function resume(){ if(state!=='paused') return; hideAll(); state='play'; last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(frame); }
+
+/* ---------------- buttons ---------------- */
+$('playBtn').onclick=()=>{ level=1; showIntro(1); };
+$('contBtn').onclick=()=>{ showIntro(maxLevel); };
+$('goBtn').onclick=enterLevel;
+$('nextBtn').onclick=()=>{ level++; showIntro(level); };
+$('winBtn').onclick=()=>{ level=1; maxLevel=1; showIntro(1); };
+$('retryBtn').onclick=enterLevel;
+$('resumeBtn').onclick=resume;
+$('freezeBtn').onclick=doFreeze;
+$('fuseBtn').onclick=doFuse;
+if('ontouchstart' in window) document.body.classList.add('touch');
+
+/* ---------------- test/debug hook (harmless) ---------------- */
+window.__GAME__={
+  get state(){return state;}, get level(){return level;}, get hp(){return player&&player.hp;},
+  get frozen(){return frozen;}, get freezes(){return player&&player.freezes;},
+  get seekersAlive(){return seekers? seekers.filter(s=>!s.dead).length:0;},
+  collectAll(){ orbs.forEach(o=>{o.got=true;}); for(let i=0;i<conf.need;i++) player.inv[i]=true; updateFuseBtn(); },
+  fuse:doFuse, freeze:doFreeze,
+  enter(){ enterLevel(); }, intro(n){ showIntro(n); },
+  goLevel(n){ level=n; showIntro(n); },
+};
+})();
+</script>
+</body>
+</html>
