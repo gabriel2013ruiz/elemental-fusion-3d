@@ -8,8 +8,10 @@ play **solo or online with up to 3 players**.
 ## 🎮 How to play
 - You start each round with **NO power**. Grab the element orbs (🔥 Fire, 💧 Water, 🪨 Earth, 🌪️ Wind).
 - Your **first orb unlocks FREEZE**. Collect them all, then press **F** to **FUSE** — a blast that destroys the Brute(s) and clears the level.
-- **FREEZE** (Space) stops every Brute for **8 seconds** when one gets close.
+- **FREEZE** (Space) stops every Brute for **4 seconds** when one gets close.
   - **2 freeze charges** on levels 1–10, only **1** on levels 11–20.
+- The **arena changes every level**, so all 20 levels look different.
+- **🔎 Secrets:** 12 of the 20 levels hide a glowing **secret relic (?)** — find it for a full heal and a bonus freeze charge.
 
 ## 🌐 Multiplayer (1–3 players, online co-op)
 - **Multiplayer → Create Room** gives you a **4-letter code**. Share it with friends.

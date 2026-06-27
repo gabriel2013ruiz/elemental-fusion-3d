@@ -173,7 +173,7 @@
   </div>
 
   <div id="touch">
-    <div class="tbtn" id="freezeBtn">FREEZE<br>8s</div>
+    <div class="tbtn" id="freezeBtn">FREEZE<br>4s</div>
     <div class="tbtn" id="fuseBtn">FUSE</div>
   </div>
   <div id="homeBtn">⌂ MENU</div>
@@ -205,6 +205,11 @@ const THEMES=[
 ];
 const FEATURES=["Tutorial — grab the orb, then press F to FUSE.","A bigger, open arena.","EARTH added — collect 2.","The Brute is faster.","WIND added — all 4 needed!","Pillar maze of cover.","TWO Brutes hunt you.","Brutes track you better.","A wide battlefield.","A huge arena.","THREE Brutes (only 1 freeze now!).","Brutes RAGE & sprint on sight.","Room layout — find the gaps.","A massive arena.","Pillar fortress.","FOUR Brutes.","Faster, raging Brutes.","Speed-demon Brutes.","FIVE Brutes, giant arena.","FINAL: the MEGA-BRUTE!"];
 const LAYOUTS=['arena','pillars','rooms','cross','arena','pillars','rooms','arena'];
+// the arena/theme changes every single level
+function themeForLevel(n){ const base=themeIdx<0?0:themeIdx; return THEMES[(base+(n-1))%THEMES.length]; }
+// hidden easter-egg secrets in 12 of the 20 levels
+const SECRET_LEVELS=[2,3,5,6,8,9,11,13,15,17,18,20];
+const EGGS=['🥚 EASTER EGG: GABE WAS HERE!','✨ Secret relic! Full heal + extra freeze','💎 You found the hidden stash!','👾 Secret spot discovered!','🍪 Sneaky! +1 freeze & full HP','⭐ Legendary find!','🔮 Hidden power surge!','🎉 You found the secret!'];
 function cfg(n){const need=n<3?2:n<5?3:4;const dim=Math.min(27,11+2*Math.floor((n-1)/2));
   let seekers=1;if(n>=7)seekers=2;if(n>=11)seekers=3;if(n>=16)seekers=4;if(n>=19)seekers=5;if(n===20)seekers=1;
   const spd=1.35+n*0.07,freezes=n<=10?2:1,rage=n>=12,boss=n===20,layout=LAYOUTS[(n-1)%LAYOUTS.length];
@@ -231,7 +236,7 @@ function bfs(map,sx,sy){const dim=map.length,d=Array.from({length:dim},()=>Array
 
 /* ===== state ===== */
 let state='menu', level=1, themeIdx=-1, theme=THEMES[0], conf=cfg(1);
-let map,dim,orbs,seekers,deco,hazards,particles,frozen,shake,dmap,dmapT,fuseFx,teamSet,players,myId=0;
+let map,dim,orbs,seekers,deco,hazards,particles,frozen,shake,dmap,dmapT,fuseFx,teamSet,secret,players,myId=0;
 const keys={}; let mapBig=false; let pingMarker=null;
 const net={role:'offline',peer:null,conns:[],conn:null,code:'',myName:'Player',lobby:[],slot:0,lastSend:0,lastSnap:0};
 // ICE config: STUN + free TURN relays so peers connect even on strict networks/NAT
@@ -259,7 +264,7 @@ function mkSeeker(x,y){return {x,y,dead:false,deathT:0,see:false,rageT:0,r:(conf
 /* build a level world (host/offline). names = array of player names */
 function buildLevel(n,names){
   level=n;conf=cfg(n);
-  theme = themeIdx<0?THEMES[(n-1)%THEMES.length]:THEMES[themeIdx];
+  theme = themeForLevel(n);   // map changes every level
   map=genMap(conf.dim,conf.layout,n);dim=conf.dim;
   const d0=bfs(map,1,1);
   const reach=openCells(map).filter(c=>d0[c.y][c.x]>=0).sort((a,b)=>d0[b.y][b.x]-d0[a.y][a.x]);
@@ -276,6 +281,8 @@ function buildLevel(n,names){
     const ty=DL[(Math.random()*DL.length)|0];
     deco.push({x:c.x+rnd(0.3,0.7),y:c.y+rnd(0.3,0.7),type:ty,color:ty==='crystal'?['#b388ff','#7fe0ff','#9aff5a','#ff8ad0'][(Math.random()*4)|0]:(ty==='barrel'?['#7a4a24','#2a5a8a','#6a6a30'][(Math.random()*3)|0]:'#ff8a1f'),ph:Math.random()*6});}
   hazards=[];if(theme.haz){const hn=3+(dim/6|0);for(let i=0;i<hn;i++){const c=reach[(Math.random()*reach.length)|0];if(!c)continue;if(c.x<=3&&c.y<=3)continue;hazards.push({x:c.x+0.5,y:c.y+0.5,type:theme.haz,ph:Math.random()*6});}}
+  secret=null;
+  if(SECRET_LEVELS.includes(n)){ const c=reach[Math.min(reach.length-1,1+((Math.random()*3)|0))]; if(c) secret={x:c.x+0.5,y:c.y+0.5,found:false,egg:EGGS[n%EGGS.length]}; }
   particles=[];frozen=0;shake=0;dmap=null;dmapT=0;fuseFx=null;pingMarker=null;
   updateFuseBtn();
 }
@@ -283,14 +290,15 @@ function buildLevel(n,names){
 function serializeLevel(){ return {t:'level',level,themeIdx:THEMES.indexOf(theme),conf:{need:conf.need,boss:conf.boss},
   map,dim, names:players.map(p=>p.name), spawns:players.map(p=>({x:p.x,y:p.y})),
   orbs:orbs.map(o=>({e:o.e,x:o.x,y:o.y})), seekers:seekers.map(s=>({x:s.x,y:s.y,r:s.r})),
-  deco, hazards, haz:theme.haz }; }
+  deco, hazards, haz:theme.haz, secret: secret?{x:secret.x,y:secret.y,egg:secret.egg}:null }; }
 function applyLevel(L){
   level=L.level; conf=cfg(level); themeIdx=L.themeIdx; theme=THEMES[L.themeIdx]||THEMES[0];
   map=L.map; dim=L.dim; teamSet=[false,false,false,false];
   players=L.names.map((nm,i)=>{const p=mkPlayer(i,L.spawns[i].x,L.spawns[i].y,nm);return p;});
   orbs=L.orbs.map(o=>({e:o.e,x:o.x,y:o.y,got:false,resp:0}));
   seekers=L.seekers.map(s=>({x:s.x,y:s.y,r:s.r,dead:false,deathT:0,see:false}));
-  deco=L.deco; hazards=L.hazards; particles=[]; frozen=0; shake=0; fuseFx=null; pingMarker=null;
+  deco=L.deco; hazards=L.hazards; secret=L.secret?{x:L.secret.x,y:L.secret.y,found:false,egg:L.secret.egg}:null;
+  particles=[]; frozen=0; shake=0; fuseFx=null; pingMarker=null;
   updateFuseBtn();
 }
 
@@ -309,7 +317,7 @@ function reqFuse(){ if(net.role==='client'){ send(net.conn,{t:'act',k:'fuse'}); 
 function reqPing(){ const p=localP(); if(!p) return; if(net.role==='client'){ send(net.conn,{t:'act',k:'ping',x:p.x,y:p.y}); return; } applyPing(p.x,p.y); }
 function applyFreeze(slot){ const p=players[slot]; if(state!=='play'||!p||p.downed) return;
   if(!p.grabbed){ if(slot===myId)flash('Grab a power first!'); return; }
-  if(p.freezes<=0||frozen>0) return; p.freezes--; frozen=8; shake=Math.max(shake,9); spawn(p.x,p.y,'#9fe0ff',22,3,.6); updateFuseBtn(); }
+  if(p.freezes<=0||frozen>0) return; p.freezes--; frozen=4; shake=Math.max(shake,9); spawn(p.x,p.y,'#9fe0ff',22,3,.6); updateFuseBtn(); }
 function applyFuse(slot){ const p=players[slot]; if(state!=='play'||!p||p.downed||!teamNeedMet()||fuseFx) return; fuseFx={t:0,by:slot}; shake=20; for(const E of ELEMS) spawn(p.x,p.y,E.color,18,4,.8); }
 function applyPing(x,y){ pingMarker={x,y,t:5}; }
 
@@ -350,6 +358,9 @@ function simulateWorld(dt){
     if(theme.haz==='lava'||theme.haz==='acid'){ for(const h of hazards){ if(dist(h.x,h.y,p.x,p.y)<0.5){ p.hp-=18*dt; p.hurt=0.2; } } }
     p.hurt=Math.max(0,p.hurt-dt);
   }
+  // hidden secret / easter egg
+  if(secret&&!secret.found){ for(const p of players){ if(p.gone||p.downed)continue;
+    if(dist(p.x,p.y,secret.x,secret.y)<0.6){ secret.found=true; p.hp=100; p.freezes++; flash(secret.egg); spawn(secret.x,secret.y,'#ffd24d',40,4,1.0); shake=Math.max(shake,12); break; } } }
   // seeker BFS toward nearest
   dmapT-=dt;
   if(dmapT<=0){ const tgt=nearestPlayer(seekers[0]||players[0])||players.find(p=>!p.gone)||players[0]; if(tgt){dmap=bfs(map,tgt.x|0,tgt.y|0);} dmapT=0.25; }
@@ -391,7 +402,7 @@ function snapshot(){ return {t:'snap',state,level,frozen,fuseT:fuseFx?fuseFx.t:-
   players:players.map(p=>({x:p.x,y:p.y,a:p.a,hp:p.hp,grabbed:p.grabbed,freezes:p.freezes,downed:p.downed,reviveProg:p.reviveProg,gone:p.gone,name:p.name})),
   seekers:seekers.map(s=>({x:s.x,y:s.y,see:s.see,dead:s.dead})),
   orbs:orbs.map(o=>({got:o.got,resp:o.resp,x:o.x,y:o.y})),
-  ping:pingMarker?{x:pingMarker.x,y:pingMarker.y}:null,
+  ping:pingMarker?{x:pingMarker.x,y:pingMarker.y}:null, secret: secret?secret.found:null,
   parts:particles.slice(0,40).map(p=>({x:p.x,y:p.y,c:p.color,l:p.life/p.max})) }; }
 function applySnapshot(s){
   if(!players||players.length!==s.players.length){ // rebuild player array shells if needed
@@ -405,6 +416,7 @@ function applySnapshot(s){
   if(seekers&&seekers.length===s.seekers.length){ for(let i=0;i<s.seekers.length;i++){const ss=s.seekers[i],e=seekers[i];e.x=ss.x;e.y=ss.y;e.see=ss.see;e.dead=ss.dead;} }
   if(orbs&&orbs.length===s.orbs.length){ for(let i=0;i<s.orbs.length;i++){orbs[i].got=s.orbs[i].got;orbs[i].resp=s.orbs[i].resp;orbs[i].x=s.orbs[i].x;orbs[i].y=s.orbs[i].y;} }
   frozen=s.frozen; fuseFx=s.fuseT>=0?{t:s.fuseT,by:0}:null; pingMarker=s.ping?{x:s.ping.x,y:s.ping.y,t:1}:null;
+  if(secret&&s.secret&&!secret.found){ secret.found=true; flash(secret.egg); }
   particles=(s.parts||[]).map(p=>({x:p.x,y:p.y,vx:0,vy:0,z:0.3,life:p.l,max:1,color:p.c}));
   // follow host state for overlays
   syncClientState(s.state);
@@ -523,6 +535,7 @@ function render(){
     const lh=(H/perp)|0;let y0=(horizon-lh/2)|0,y1=(horizon+lh/2)|0;const wy0=y0;if(y0<0)y0=0;if(y1>H)y1=H;
     let bright=Math.max(0.4,Math.min(1,1.25/(1+perp*0.10)));if(side===1)bright*=0.82;bright*=0.9+hashCell(mapX,mapY)*0.18;
     let wx=side===0?posY+perp*rdY:posX+perp*rdX;wx-=Math.floor(wx);if(wx<0.04||wx>0.96)bright*=0.7;
+    bright*=0.93+0.07*Math.sin(mapX*7.1+mapY*13.3+wx*26.0); // surface grunge
     // per-theme wall texture
     let tint=null;
     if(pat==='corrugated') bright*=0.74+0.26*Math.abs(Math.sin(wx*Math.PI*8));
@@ -540,10 +553,14 @@ function render(){
     if(lh>14){ const rows=(pat==='windows'||pat==='brick')?5:3; ctx.fillStyle='rgba(0,0,0,.22)';
       for(let m=1;m<=rows;m++){const my=(wy0+lh*(m/(rows+1)))|0;if(my>y0&&my<y1)ctx.fillRect(x,my,1,1);}
       if(pat==='windows'&&((wx*4|0)%2===0)&&lh>30){ ctx.fillStyle='rgba(255,236,150,.10)'; for(let m=1;m<=4;m++){const my=(wy0+lh*(m/5))|0;if(my>y0&&my<y1)ctx.fillRect(x,my-2,1,4);} } }
+    // ambient occlusion at top (ceiling shadow) and bottom (floor contact)
+    const aoh=Math.min(22,(y1-y0)*0.17);
+    if(aoh>1){ ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(x,y0,1,aoh*0.6); ctx.fillStyle='rgba(0,0,0,.24)';ctx.fillRect(x,y1-aoh,1,aoh); }
   }
   // sprites
   const sprites=[];
   for(const o of orbs)if(!o.got&&o.resp<=0)sprites.push({x:o.x,y:o.y,k:'orb',e:o.e});
+  if(secret&&!secret.found)sprites.push({x:secret.x,y:secret.y,k:'secret'});
   for(const s of seekers)if(!s.dead||s.deathT<0.5)sprites.push({x:s.x,y:s.y,k:'brute',s});
   for(const dd of deco)sprites.push({x:dd.x,y:dd.y,k:'deco',dd});
   for(const h of hazards)sprites.push({x:h.x,y:h.y,k:'haz',h});
@@ -559,6 +576,10 @@ function render(){
     if(sp.k==='orb'){const E=ELEMS[sp.e],R=sh*0.16,cy=horizon;const gr=ctx.createRadialGradient(scrX,cy,1,scrX,cy,R*2);gr.addColorStop(0,E.glow);gr.addColorStop(.5,E.color);gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.beginPath();ctx.arc(scrX,cy,R*2,0,6.3);ctx.fill();ctx.fillStyle=E.color;ctx.beginPath();ctx.arc(scrX,cy,R,0,6.3);ctx.fill();if(R>9){ctx.font=(R*1.2|0)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(E.emoji,scrX,cy+1);}}
     else if(sp.k==='deco'){ drawDeco(sp.dd,scrX,horizon,sh); }
     else if(sp.k==='haz'){const h=sp.h,R=sh*0.34,cy=horizon+sh*0.42,fl=0.75+Math.sin(perfNow()/180+h.ph)*0.25,col=h.type==='lava'?'#ff5a14':h.type==='acid'?'#9aff3a':h.type==='ice'?'#bfe8ff':'#3aa6ff';ctx.globalAlpha=0.7;const gr=ctx.createRadialGradient(scrX,cy,1,scrX,cy,R*fl);gr.addColorStop(0,'#fff');gr.addColorStop(.4,col);gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.beginPath();ctx.ellipse(scrX,cy,R*fl,R*0.4*fl,0,0,6.3);ctx.fill();ctx.globalAlpha=1;}
+    else if(sp.k==='secret'){const cy=horizon,R=sh*0.14,fl=0.7+Math.sin(perfNow()/150)*0.3;
+      const gr=ctx.createRadialGradient(scrX,cy,1,scrX,cy,R*2.6*fl);gr.addColorStop(0,'#fff');gr.addColorStop(.4,'#ffd24d');gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.beginPath();ctx.arc(scrX,cy,R*2.6*fl,0,6.3);ctx.fill();
+      ctx.fillStyle='#ffd24d';ctx.beginPath();ctx.moveTo(scrX,cy-R);ctx.lineTo(scrX+R*0.8,cy);ctx.lineTo(scrX,cy+R);ctx.lineTo(scrX-R*0.8,cy);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#7a5210';ctx.font='bold '+Math.max(8,R*0.9|0)+'px Orbitron,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',scrX,cy+1);}
     else if(sp.k==='ping'){const R=sh*0.2,cy=horizon-sh*0.4;ctx.fillStyle='#ffe34d';ctx.globalAlpha=0.8;ctx.beginPath();ctx.moveTo(scrX,cy+R);ctx.lineTo(scrX-R*0.6,cy-R*0.4);ctx.lineTo(scrX+R*0.6,cy-R*0.4);ctx.closePath();ctx.fill();ctx.globalAlpha=1;}
     else if(sp.k==='ally'){const o=sp.pl; drawHumanoid(scrX,horizon,sh*0.95,o.id,o.downed);
       ctx.fillStyle=o.downed?'#ff6b6b':'#cfe9ff';ctx.font='bold '+Math.max(9,sh*0.07|0)+'px Rajdhani,sans-serif';ctx.textAlign='center';ctx.fillText(o.downed?('▼ '+o.name+' — revive!'):o.name,scrX,horizon-sh*0.55);}
@@ -566,6 +587,10 @@ function render(){
   }
   ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2-6,H/2);ctx.lineTo(W/2+6,H/2);ctx.moveTo(W/2,H/2-6);ctx.lineTo(W/2,H/2+6);ctx.stroke();
   ctx.restore();
+  // cinematic vignette
+  const vg=ctx.createRadialGradient(W/2,H*0.52,H*0.32,W/2,H*0.52,H*0.92);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.42)');
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
   drawHUD();
 }
 function drawBrute(cx,cy,h,o){
@@ -671,13 +696,13 @@ function showMapSelect(){ $('modeLabel').textContent = net.role==='host'?'Multip
 function startGameAt(themeChoice){ themeIdx=themeChoice; level=1;
   if(net.role==='host'){ buildLevel(1, net.lobby.length?net.lobby:[net.myName]); broadcast(serializeLevel()); showIntro(1,false); }
   else { players=[mkPlayer(0,1.5,1.5,'You')]; showIntro(1,false); } }
-function showIntro(n,isClient){ const c=cfg(n); const th=themeIdx<0?THEMES[(n-1)%THEMES.length]:THEMES[themeIdx];
+function showIntro(n,isClient){ const c=cfg(n); const th=(net.role==='client')?theme:themeForLevel(n);
   $('introTitle').textContent='LEVEL '+n+(c.boss?' — FINAL':'');
   $('introFeature').textContent='🗺️ '+th.name+' — ✨ '+c.feature;
   const np=net.role==='offline'?1:(net.lobby.length||1);
   const brutes=c.seekers+Math.max(0,np-1);
   $('introGoal').innerHTML='<b>Goal:</b> the squad grabs <b>'+c.need+'</b> element'+(c.need===1?'':'s')+' then anyone presses <span class="k">F</span> to FUSE & destroy the Brute'+(brutes>1?'s':'')+'.<br>'+
-    '<b>Brutes:</b> '+brutes+(c.rage?' (they sprint when they see you!)':'')+' &nbsp;·&nbsp; <b>Freeze:</b> '+c.freezes+' each (stops them 8s)'+
+    '<b>Brutes:</b> '+brutes+(c.rage?' (they sprint when they see you!)':'')+' &nbsp;·&nbsp; <b>Freeze:</b> '+c.freezes+' each (stops them 4s)'+
     (th.haz?('<br><span style="color:#ff8a6b">⚠ Hazard: '+th.haz.toUpperCase()+' — avoid the glowing floor!</span>'):'')+
     (np>1?'<br><span style="color:#9dffa6">👥 Co-op: elements are shared across the squad — split up! Revive downed teammates by standing near them.</span>':'<br><span style="color:#7c87bd">Grab your first element to unlock Freeze.</span>');
   hideAll();$('intro').classList.remove('hidden');state='intro';
@@ -705,7 +730,8 @@ function updateFuseBtn(){const b=$('fuseBtn');if(b){if(teamNeedMet())b.classList
 /* ===== help text ===== */
 const HOW='<b>FUSION SQUAD</b> — a huge muscular <b style="color:#ff6a6a">BRUTE</b> hunts you in each arena. You start with <b>NO power</b>.<br><br>'+
  '🎯 <b>Grab the element orbs</b> (🔥💧🪨🌪️). Your <b>first orb unlocks FREEZE</b>. Collect them all, then press <span class="k">F</span> to <b>FUSE</b> — a blast that destroys the Brutes and clears the level.<br><br>'+
- '❄ <b>FREEZE</b> stops every Brute for <b>8 seconds</b> when one gets close. You get <b>2 charges</b> on levels 1–10 and only <b>1</b> on levels 11–20 — save it!<br><br>'+
+ '❄ <b>FREEZE</b> stops every Brute for <b>4 seconds</b> when one gets close. You get <b>2 charges</b> on levels 1–10 and only <b>1</b> on levels 11–20 — save it!<br>'+
+ '🔎 Some levels hide a <b style="color:#ffd24d">secret relic</b> (a glowing <b>?</b>) — grab it for a full heal and a bonus freeze!<br><br>'+
  '<span class="mp"><b>🌐 Multiplayer (1–3 players, online co-op)</b><br>'+
  '• Create a room → share the <b>4-letter code</b>. Friends pick Multiplayer → Join → type the code.<br>'+
  '• <b>Shared elements:</b> orbs you grab count for the whole squad — split up to gather faster!<br>'+
@@ -769,6 +795,8 @@ window.__GAME__={
   get state(){return state;}, get level(){return level;}, get role(){return net.role;}, get code(){return net.code;},
   get numPlayers(){return numPlayers();}, get frozen(){return frozen;}, get seekersAlive(){return seekers?seekers.filter(s=>!s.dead).length:0;},
   get teamSet(){return teamSet;}, get lobby(){return net.lobby;},
+  get theme(){return theme?theme.name:null;}, themeOf(n){return themeForLevel(n).name;},
+  get hasSecret(){return !!secret;}, get secretFound(){return secret?secret.found:null;},
   hp(i){return players&&players[i||0]?players[i||0].hp:null;}, freezes(i){return players&&players[i||0]?players[i||0].freezes:null;},
   grabbed(i){return players&&players[i||0]?players[i||0].grabbed:null;},
   startSolo(ti){ net.role='offline'; startGameAt(ti==null?0:ti); },
