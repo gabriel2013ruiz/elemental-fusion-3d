@@ -60,7 +60,7 @@
   <!-- MENU -->
   <div class="overlay" id="menu">
     <h1>ELEMENTAL&nbsp;FUSION&nbsp;3D</h1>
-    <div class="sub">First-person. 20 levels. One powerful Seeker per maze — and it gets worse. 😈</div>
+    <div class="sub">First-person. 20 levels. A huge muscular Brute hunts you in every bright arena — and it gets worse. 😈</div>
     <div class="elems">
       <div class="chip"><div class="o" style="color:#ff5a1f;background:radial-gradient(circle at 35% 30%,#ffd0a0,#ff5a1f)">🔥</div>FIRE<br><span style="color:#7c87bd">(you start with this)</span></div>
       <div class="chip"><div class="o" style="color:#2aa6ff;background:radial-gradient(circle at 35% 30%,#bfe8ff,#2aa6ff)">💧</div>WATER</div>
@@ -117,7 +117,7 @@
     <div class="tbtn" id="fuseBtn">FUSE</div>
   </div>
 
-  <div class="hintbar" id="hintbar">WASD move · Arrows/Mouse look · SPACE freeze · F fuse · M map · P pause</div>
+  <div class="hintbar" id="hintbar">W/S move · A/D turn · Q/E strafe · Arrows/Mouse look · SPACE freeze · F fuse · M map · P pause</div>
 </div>
 
 <script>
@@ -137,26 +137,26 @@ const ELEMS=[
 
 /* ---------------- 20 level feature progression ---------------- */
 const FEATURES=[
-  "Tutorial — find the orb, then press F to FUSE.",      //1
-  "A bigger maze to get lost in.",                       //2
+  "Tutorial — grab the orb, then press F to FUSE.",      //1
+  "A bigger, open arena.",                               //2
   "EARTH added — collect 2 orbs before fusing.",         //3
-  "The Seeker is faster now.",                           //4
+  "The brute is faster now.",                            //4
   "WIND added — all 4 elements needed!",                 //5
-  "FOG: your sight is limited. Stay sharp.",             //6
-  "TWO Seekers hunt you.",                               //7
-  "Seekers navigate the maze smarter.",                  //8
-  "Thicker fog — you see even less.",                    //9
-  "A sprawling labyrinth.",                              //10
-  "THREE Seekers.",                                      //11
-  "Seekers RAGE & sprint when they spot you.",           //12
+  "More pillars to dodge behind.",                       //6
+  "TWO brutes hunt you.",                                //7
+  "Brutes track you better.",                            //8
+  "A wide battlefield.",                                 //9
+  "A huge arena.",                                       //10
+  "THREE brutes.",                                       //11
+  "Brutes RAGE & sprint when they spot you.",            //12
   "Fewer freeze charges — use them wisely.",             //13
-  "A massive maze.",                                     //14
-  "Heavy fog — nearly blind.",                           //15
-  "FOUR Seekers.",                                       //16
-  "Faster, raging Seekers everywhere.",                  //17
-  "Tiny vision and speed-demon Seekers.",                //18
-  "FIVE Seekers in a huge maze.",                        //19
-  "FINAL: the MEGA-SEEKER. Fuse to end it all!",         //20
+  "A massive arena.",                                    //14
+  "Pillar fortress — lots of cover.",                    //15
+  "FOUR brutes.",                                        //16
+  "Faster, raging brutes everywhere.",                   //17
+  "Speed-demon brutes.",                                 //18
+  "FIVE brutes in a giant arena.",                       //19
+  "FINAL: the MEGA-BRUTE. Fuse to end it all!",          //20
 ];
 function cfg(n){
   const need = n<3?2 : n<5?3 : 4;                 // total elements incl. fire
@@ -165,8 +165,7 @@ function cfg(n){
   if(n>=7) seekers=2; if(n>=11) seekers=3; if(n>=16) seekers=4; if(n>=19) seekers=5;
   if(n===20) seekers=1;                           // single mega-seeker
   const spd = 1.4 + n*0.07;                        // cells / second
-  let vision=99;
-  if(n>=6) vision=8; if(n>=9) vision=6.5; if(n>=15) vision=5; if(n>=18) vision=4;
+  const vision=99; // bright, open arenas (no fog)
   let freezes=4; if(n>=13) freezes=3; if(n>=18) freezes=2;
   const rage = n>=12;
   const boss = n===20;
@@ -175,18 +174,18 @@ function cfg(n){
 
 /* ---------------- maze gen ---------------- */
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
-function genMaze(dim){
-  const g=Array.from({length:dim},()=>Array(dim).fill(1));
-  (function carve(cx,cy){
-    g[cy][cx]=0;
-    for(const [dx,dy] of shuffle([[0,-2],[0,2],[-2,0],[2,0]])){
-      const nx=cx+dx, ny=cy+dy;
-      if(nx>0&&ny>0&&nx<dim-1&&ny<dim-1&&g[ny][nx]===1){ g[cy+dy/2][cx+dx/2]=0; carve(nx,ny); }
-    }
-  })(1,1);
-  // open a few extra walls so it's less claustrophobic
-  for(let i=0;i<dim;i++){ const x=1+2*((Math.random()*((dim-1)/2))|0), y=1+2*((Math.random()*((dim-1)/2))|0);
-    if(x>1&&x<dim-1&&y>1&&y<dim-1&&Math.random()<0.5) g[y][x===1?2:x-1]=0; }
+// OPEN, bright arena with scattered pillars/blocks for cover (NOT a maze)
+function genArena(dim){
+  const g=Array.from({length:dim},()=>Array(dim).fill(0));
+  for(let i=0;i<dim;i++){ g[0][i]=1; g[dim-1][i]=1; g[i][0]=1; g[i][dim-1]=1; }
+  const blocks=Math.floor(dim*dim*0.05)+2+level;
+  for(let b=0;b<blocks;b++){
+    const bw=1+(Math.random()<0.35?1:0), bh=1+(Math.random()<0.35?1:0);
+    const x=2+((Math.random()*(dim-4))|0), y=2+((Math.random()*(dim-4))|0);
+    if(x<=3&&y<=3) continue;                 // keep spawn corner clear
+    for(let yy=y;yy<y+bh&&yy<dim-1;yy++) for(let xx=x;xx<x+bw&&xx<dim-1;xx++) g[yy][xx]=1;
+  }
+  g[1][1]=0; g[1][2]=0; g[2][1]=0; g[2][2]=0; // open spawn area
   return g;
 }
 function openCells(map){const r=[];for(let y=1;y<map.length-1;y++)for(let x=1;x<map.length-1;x++)if(map[y][x]===0)r.push({x,y});return r;}
@@ -210,21 +209,18 @@ let touchMove=null, touchLook=null; // {id, sx, sy, dx, dy}
 
 function startLevel(n){
   level=n; conf=cfg(n);
-  map=genMaze(conf.dim); dim=conf.dim;
-  const cells=openCells(map);
-  // player at corner, facing whichever neighbouring corridor is open (so you see depth)
-  let spawnA = 0;
-  if(map[1][2]===0) spawnA=0;            // east
-  else if(map[2][1]===0) spawnA=Math.PI/2; // south
-  player={x:1.5,y:1.5,a:spawnA,hp:100,inv:[true,false,false,false],freezes:conf.freezes,sprint:0};
-  // pick far cells for orbs (elements 1..need-1) and seekers
-  const far=cells.slice().sort((p,q)=> (dist2(q,{x:1,y:1})-dist2(p,{x:1,y:1})) );
-  orbs=[];
-  let idx=0;
-  for(let e=1;e<conf.need;e++){ const c=far[idx]; idx+=Math.max(1,(far.length/ (conf.need+ conf.seekers))|0);
-    orbs.push({e, x:c.x+0.5, y:c.y+0.5, got:false}); }
+  map=genArena(conf.dim); dim=conf.dim;
+  // spawn in a corner, facing the open arena (towards the centre)
+  player={x:1.5,y:1.5,a:Math.PI/4,pitch:0,hp:100,inv:[true,false,false,false],freezes:conf.freezes,sprint:0};
+  // reachable cells sorted by true path-distance from spawn (so orbs/brutes are far but reachable)
+  const d0=bfs(map,1,1);
+  const reach=openCells(map).filter(c=>d0[c.y][c.x]>=0).sort((a,b)=>d0[b.y][b.x]-d0[a.y][a.x]);
+  orbs=[]; let idx=0;
+  const stepO=Math.max(1,(reach.length/(conf.need+conf.seekers+1))|0);
+  for(let e=1;e<conf.need;e++){ const c=reach[Math.min(reach.length-1,idx)]; idx+=stepO;
+    orbs.push({e,x:c.x+0.5,y:c.y+0.5,got:false}); }
   seekers=[];
-  for(let s=0;s<conf.seekers;s++){ const c=far[Math.min(far.length-1, idx)]; idx+=Math.max(1,(far.length/(conf.seekers+1))|0);
+  for(let s=0;s<conf.seekers;s++){ const c=reach[Math.min(reach.length-1,idx)]; idx+=stepO;
     seekers.push(mkSeeker(c.x+0.5,c.y+0.5)); }
   particles=[]; dmap=null; dmapT=0; frozen=0; shake=0; hurt=0; fuseFx=null; levelClearT=0;
   maxLevel=Math.max(maxLevel,n);
@@ -271,19 +267,21 @@ function spawn(x,y,color,n,spd,life){
 
 /* ---------------- update ---------------- */
 function update(dt){
-  // ----- player look & move -----
+  // ----- camera: A=left, D=right turn (also arrows); arrows up/down look (pitch); mouse handled elsewhere -----
   const turn=2.6;
-  if(keys['arrowleft']) player.a-=turn*dt;
-  if(keys['arrowright']) player.a+=turn*dt;
-  if(touchLook){ player.a+=touchLook.dx*0.005; touchLook.dx=0; }
-  const sprint = keys['shift']?1.7:1;
-  const spd=2.7*sprint;
-  let fx=Math.cos(player.a), fy=Math.sin(player.a), sx=-fy, sy=fx;
+  if(keys['a']||keys['arrowleft']) player.a-=turn*dt;
+  if(keys['d']||keys['arrowright']) player.a+=turn*dt;
+  if(keys['arrowup']) player.pitch=Math.min(170,player.pitch+170*dt);
+  if(keys['arrowdown']) player.pitch=Math.max(-170,player.pitch-170*dt);
+  if(touchLook){ player.a+=touchLook.dx*0.005; player.pitch=Math.max(-170,Math.min(170,player.pitch-touchLook.dy*0.5)); touchLook.dx=0; touchLook.dy=0; }
+  // ----- movement: W forward, S back, Q/E strafe -----
+  const sprint=keys['shift']?1.7:1, spd=2.7*sprint;
+  const fx=Math.cos(player.a), fy=Math.sin(player.a), sx=-fy, sy=fx;
   let mvx=0,mvy=0;
-  if(keys['w']||keys['arrowup']){ mvx+=fx; mvy+=fy; }
-  if(keys['s']||keys['arrowdown']){ mvx-=fx; mvy-=fy; }
-  if(keys['a']){ mvx+=sx; mvy+=sy; }
-  if(keys['d']){ mvx-=sx; mvy-=sy; }
+  if(keys['w']) { mvx+=fx; mvy+=fy; }
+  if(keys['s']) { mvx-=fx; mvy-=fy; }
+  if(keys['q']) { mvx+=sx; mvy+=sy; }
+  if(keys['e']) { mvx-=sx; mvy-=sy; }
   if(touchMove){ mvx+=fx*(-touchMove.dy/40)+sx*(touchMove.dx/40); mvy+=fy*(-touchMove.dy/40)+sy*(touchMove.dx/40); }
   const ml=Math.hypot(mvx,mvy); if(ml>1){ mvx/=ml; mvy/=ml; }
   moveEnt(player, mvx*spd*dt, mvy*spd*dt);
@@ -345,12 +343,15 @@ function update(dt){
 const zbuf=new Float32Array(W);
 function render(){
   const ox=shake>0?(Math.random()-.5)*shake:0, oy=shake>0?(Math.random()-.5)*shake:0;
-  // ceiling & floor
-  const fog=conf.vision<20;
-  let g=ctx.createLinearGradient(0,0,0,H/2);
-  g.addColorStop(0, fog?'#05060c':'#0a1024'); g.addColorStop(1,'#0c1330'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H/2);
-  g=ctx.createLinearGradient(0,H/2,0,H);
-  g.addColorStop(0,'#161a2e'); g.addColorStop(1, fog?'#04050a':'#23283f'); ctx.fillStyle=g; ctx.fillRect(0,H/2,W,H/2);
+  const horizon=((H/2)+(player.pitch||0))|0;
+  const hy=Math.max(0,Math.min(H,horizon));
+  // bright sky/ceiling + floor
+  let g=ctx.createLinearGradient(0,0,0,Math.max(1,hy));
+  g.addColorStop(0,'#7d93d6'); g.addColorStop(1,'#4a5890');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,hy);
+  g=ctx.createLinearGradient(0,hy,0,H);
+  g.addColorStop(0,'#646a92'); g.addColorStop(1,'#3a4062');
+  ctx.fillStyle=g; ctx.fillRect(0,hy,W,H-hy);
 
   const posX=player.x, posY=player.y;
   const dirX=Math.cos(player.a), dirY=Math.sin(player.a);
@@ -365,7 +366,7 @@ function render(){
     if(rdX<0){stepX=-1;sideX=(posX-mapX)*ddX;}else{stepX=1;sideX=(mapX+1-posX)*ddX;}
     if(rdY<0){stepY=-1;sideY=(posY-mapY)*ddY;}else{stepY=1;sideY=(mapY+1-posY)*ddY;}
     let hit=0,side=0,guard=0;
-    while(!hit && guard++<64){
+    while(!hit && guard++<80){
       if(sideX<sideY){sideX+=ddX;mapX+=stepX;side=0;}else{sideY+=ddY;mapY+=stepY;side=1;}
       if(mapX<0||mapY<0||mapX>=dim||mapY>=dim){hit=2;break;}
       if(map[mapY][mapX]>0) hit=1;
@@ -375,24 +376,20 @@ function render(){
     zbuf[x]=perp;
     if(hit!==1) continue;
     const lh=(H/perp)|0;
-    let y0=(-lh/2+H/2)|0, y1=(lh/2+H/2)|0; if(y0<0)y0=0; if(y1>H)y1=H;
-    // shade by distance + fog + wall side
-    let bright= 1/(1+perp*perp*0.06);
-    if(side===1) bright*=0.7;
-    if(fog) bright*= Math.max(0, Math.min(1,(conf.vision-perp+1)/conf.vision));
-    bright=Math.max(0.04,Math.min(1,bright));
-    // wall color tint shifts slightly by depth so it isn't flat
-    const r=(70*bright)|0, gg=(90*bright)|0, b=(150*bright)|0;
+    let y0=(horizon-lh/2)|0, y1=(horizon+lh/2)|0; if(y0<0)y0=0; if(y1>H)y1=H;
+    // bright shading: gentle distance falloff so far walls stay visible
+    let bright=Math.max(0.4, Math.min(1, 1.25/(1+perp*0.10)));
+    if(side===1) bright*=0.82;
+    const r=(180*bright)|0, gg=(172*bright)|0, b=(198*bright)|0;
     ctx.fillStyle='rgb('+r+','+gg+','+b+')';
     ctx.fillRect(x+ox, y0+oy, 1, y1-y0);
   }
 
-  // ---- sprites (orbs + seekers + particles) ----
+  // ---- sprites (orbs + brutes + particles) ----
   const sprites=[];
   for(const o of orbs){ if(!o.got) sprites.push({x:o.x,y:o.y,kind:'orb',e:o.e}); }
   for(const s of seekers){ if(!s.dead||s.deathT<0.5) sprites.push({x:s.x,y:s.y,kind:'seeker',s}); }
   for(const p of particles) sprites.push({x:p.x,y:p.y,kind:'part',p});
-  // sort far->near
   for(const sp of sprites) sp.d=dist2(sp,player);
   sprites.sort((a,b)=>b.d-a.d);
 
@@ -405,51 +402,85 @@ function render(){
     const scrX=((W/2)*(1+tX/tY))|0;
     if(scrX<0||scrX>=W) continue;
     if(tY>=zbuf[scrX]) continue; // occluded by wall
-    let fogB=1; if(fog) fogB=Math.max(0,Math.min(1,(conf.vision-tY+1)/conf.vision));
+    const sh=Math.abs(H/tY);
     if(sp.kind==='part'){
-      const size=Math.max(1,(H/tY)*0.04*(sp.p.life/sp.p.max));
-      ctx.globalAlpha=Math.max(0,sp.p.life/sp.p.max)*fogB;
-      ctx.fillStyle=sp.p.color; ctx.beginPath();ctx.arc(scrX+ox, (H/2 - (H/tY)*sp.p.z)+oy, size,0,6.3);ctx.fill();
+      const size=Math.max(1,sh*0.04*(sp.p.life/sp.p.max));
+      ctx.globalAlpha=Math.max(0,sp.p.life/sp.p.max);
+      ctx.fillStyle=sp.p.color; ctx.beginPath();ctx.arc(scrX+ox,(horizon-sh*sp.p.z)+oy,size,0,6.3);ctx.fill();
       ctx.globalAlpha=1; continue;
     }
-    const sh=Math.abs(H/tY);
     if(sp.kind==='orb'){
-      const E=ELEMS[sp.e], R=sh*0.16, cyp=H/2+oy;
+      const E=ELEMS[sp.e], R=sh*0.16, cyp=horizon+oy;
       const grd=ctx.createRadialGradient(scrX,cyp,1,scrX,cyp,R*2);
       grd.addColorStop(0,E.glow); grd.addColorStop(.5,E.color); grd.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.globalAlpha=fogB; ctx.fillStyle=grd; ctx.beginPath();ctx.arc(scrX+ox,cyp,R*2,0,6.3);ctx.fill();
+      ctx.fillStyle=grd; ctx.beginPath();ctx.arc(scrX+ox,cyp,R*2,0,6.3);ctx.fill();
       ctx.fillStyle=E.color; ctx.beginPath();ctx.arc(scrX+ox,cyp,R,0,6.3);ctx.fill();
       if(R>9){ ctx.font=(R*1.2|0)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(E.emoji,scrX+ox,cyp+1); }
-      ctx.globalAlpha=1;
-    } else { // seeker
-      const s=sp.s; const dead=s.dead;
-      const R=sh*(conf.boss?0.34:0.24); const cyp=H/2 + sh*0.10 + oy;
-      ctx.globalAlpha=(dead?Math.max(0,1-s.deathT/0.5):1)*fogB;
-      // aura
-      const chasing=s.see;
-      const ag=ctx.createRadialGradient(scrX,cyp,2,scrX,cyp,R*1.7);
-      ag.addColorStop(0, chasing?'rgba(255,40,60,.5)':'rgba(150,40,200,.35)'); ag.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=ag; ctx.beginPath();ctx.arc(scrX+ox,cyp,R*1.7,0,6.3);ctx.fill();
-      // body
-      const bg=ctx.createRadialGradient(scrX-R*0.3,cyp-R*0.3,2,scrX,cyp,R);
-      bg.addColorStop(0,'#5a2030'); bg.addColorStop(1,'#140510');
-      ctx.fillStyle=bg; ctx.beginPath();ctx.arc(scrX+ox,cyp,R,0,6.3);ctx.fill();
-      ctx.lineWidth=Math.max(1,R*0.12); ctx.strokeStyle= frozen>0?'#9fe0ff':(chasing?'#ff2b4e':'#7a3a9a');
-      ctx.beginPath();ctx.arc(scrX+ox,cyp,R,0,6.3);ctx.stroke();
-      // eyes
-      const ey=R*0.16;
-      ctx.fillStyle= frozen>0?'#bfe8ff':'#ff3b3b';
-      ctx.beginPath();ctx.arc(scrX+ox-R*0.35,cyp-R*0.15,ey,0,6.3);ctx.fill();
-      ctx.beginPath();ctx.arc(scrX+ox+R*0.35,cyp-R*0.15,ey,0,6.3);ctx.fill();
-      ctx.globalAlpha=1;
+    } else { // the big scary brute
+      const s=sp.s, h=sh*(conf.boss?1.35:1.05);
+      drawBrute(scrX+ox, horizon+oy, h, {chasing:s.see, frozen:frozen>0, alpha:(s.dead?Math.max(0,1-s.deathT/0.5):1)});
     }
   }
 
-  // ---- weapon/hands hint: elemental orb in hand (fire) ----
-  drawHand();
-  // ---- HUD ----
-  drawHUD();
-  drawMinimap();
+  drawHand(); drawHUD(); drawMinimap();
+}
+
+// big muscular humanoid brute (billboard sprite)
+function drawBrute(cx,cy,h,o){
+  const w=h*0.5, t=cy-h*0.5, b=cy+h*0.5;
+  ctx.globalAlpha=o.alpha;
+  // ground aura
+  const aur=ctx.createRadialGradient(cx,b-h*0.03,2,cx,b-h*0.03,w*1.4);
+  aur.addColorStop(0,o.chasing?'rgba(255,30,40,.55)':'rgba(120,20,40,.4)'); aur.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=aur; ctx.beginPath();ctx.ellipse(cx,b-h*0.02,w*1.3,h*0.13,0,0,6.3);ctx.fill();
+  const skin=o.frozen?'#7fb6e0':'#5a141c', dark=o.frozen?'#4f86b8':'#2a0a10', hi=o.frozen?'#a9d6f5':'#7e202c';
+  const line=o.frozen?'#cdeaff':'#140406'; ctx.lineJoin='round'; ctx.lineWidth=Math.max(1,h*0.018); ctx.strokeStyle=line;
+  // legs
+  ctx.fillStyle=dark;
+  rr(cx-w*0.36,t+h*0.58,w*0.3,h*0.42,h*0.03); ctx.fill(); ctx.stroke();
+  rr(cx+w*0.06,t+h*0.58,w*0.3,h*0.42,h*0.03); ctx.fill(); ctx.stroke();
+  // forearms behind torso
+  ctx.fillStyle=skin;
+  rr(cx-w*0.7,t+h*0.38,w*0.22,h*0.26,h*0.04); ctx.fill(); ctx.stroke();
+  rr(cx+w*0.48,t+h*0.38,w*0.22,h*0.26,h*0.04); ctx.fill(); ctx.stroke();
+  // torso (broad shoulders -> waist)
+  ctx.fillStyle=skin; ctx.beginPath();
+  ctx.moveTo(cx-w*0.5,t+h*0.30); ctx.lineTo(cx+w*0.5,t+h*0.30);
+  ctx.lineTo(cx+w*0.3,t+h*0.62); ctx.lineTo(cx-w*0.3,t+h*0.62); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // pecs + abs shading
+  ctx.fillStyle=hi;
+  ctx.beginPath();ctx.arc(cx-w*0.17,t+h*0.40,w*0.14,0,6.3);ctx.fill();
+  ctx.beginPath();ctx.arc(cx+w*0.17,t+h*0.40,w*0.14,0,6.3);ctx.fill();
+  ctx.fillStyle=dark; ctx.fillRect(cx-w*0.01,t+h*0.36,w*0.02,h*0.22);
+  // big biceps
+  ctx.fillStyle=skin;
+  ctx.beginPath();ctx.arc(cx-w*0.52,t+h*0.37,w*0.21,0,6.3);ctx.fill(); ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+w*0.52,t+h*0.37,w*0.21,0,6.3);ctx.fill(); ctx.stroke();
+  // fists
+  ctx.fillStyle=dark;
+  ctx.beginPath();ctx.arc(cx-w*0.6,t+h*0.64,w*0.14,0,6.3);ctx.fill(); ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+w*0.6,t+h*0.64,w*0.14,0,6.3);ctx.fill(); ctx.stroke();
+  // neck + head
+  ctx.fillStyle=skin; rr(cx-w*0.1,t+h*0.21,w*0.2,h*0.07,h*0.02); ctx.fill();
+  ctx.beginPath();ctx.arc(cx,t+h*0.14,h*0.1,0,6.3);ctx.fill(); ctx.stroke();
+  // horns
+  ctx.fillStyle=dark;
+  ctx.beginPath();ctx.moveTo(cx-h*0.085,t+h*0.07);ctx.lineTo(cx-h*0.15,t-h*0.03);ctx.lineTo(cx-h*0.03,t+h*0.05);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(cx+h*0.085,t+h*0.07);ctx.lineTo(cx+h*0.15,t-h*0.03);ctx.lineTo(cx+h*0.03,t+h*0.05);ctx.closePath();ctx.fill();
+  // angry brow
+  ctx.strokeStyle=line; ctx.lineWidth=Math.max(1,h*0.02);
+  ctx.beginPath();ctx.moveTo(cx-h*0.075,t+h*0.105);ctx.lineTo(cx-h*0.01,t+h*0.135);
+  ctx.moveTo(cx+h*0.075,t+h*0.105);ctx.lineTo(cx+h*0.01,t+h*0.135);ctx.stroke();
+  // glowing eyes
+  ctx.fillStyle=o.frozen?'#bfe8ff':'#ff2b2b'; ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=Math.max(2,h*0.08);
+  ctx.beginPath();ctx.arc(cx-h*0.045,t+h*0.15,h*0.024,0,6.3);ctx.fill();
+  ctx.beginPath();ctx.arc(cx+h*0.045,t+h*0.15,h*0.024,0,6.3);ctx.fill();
+  ctx.shadowBlur=0;
+  // snarl
+  ctx.strokeStyle=line; ctx.lineWidth=Math.max(1,h*0.016);
+  ctx.beginPath();ctx.moveTo(cx-h*0.04,t+h*0.185);ctx.lineTo(cx+h*0.04,t+h*0.185);ctx.stroke();
+  ctx.globalAlpha=1;
 }
 
 function drawHand(){
@@ -557,13 +588,15 @@ function hideAll(){ for(const id of ['menu','intro','clear','win','lose','help']
 function updateFuseBtn(){ const b=$('fuseBtn'); if(b){ if(allGot()) b.classList.add('ready'); else b.classList.remove('ready'); } }
 
 /* ---------------- help text ---------------- */
-const HOW='<b>You are hunted.</b> A powerful Seeker roams each maze. You can\'t fight it head-on — but you carry <b style="color:#ff5a1f">🔥 FIRE</b> from the start.<br><br>'+
-  '🎯 <b>Find the other elements</b> (💧🪨🌪️) hidden in the maze, then press <span class="k">F</span> to <b>FUSE all your powers</b> into one blast that destroys the Seeker and clears the level.<br><br>'+
-  '❄ <b>When a Seeker gets close, press <span class="k">SPACE</span> to FREEZE</b> every Seeker for <b>8 seconds</b> — your escape move. You have limited charges per level.<br><br>'+
+const HOW='<b>You are hunted.</b> A huge muscular <b style="color:#ff6a6a">BRUTE</b> roams each bright arena. You can\'t fight it head-on — but you carry <b style="color:#ff5a1f">🔥 FIRE</b> from the start.<br><br>'+
+  '🎯 <b>Find the other elements</b> (💧 Water, 🪨 Earth, 🌪️ Wind) around the arena, then press <span class="k">F</span> to <b>FUSE all your powers</b> into one blast that destroys the Brute(s) and clears the level.<br><br>'+
+  '❄ <b>When a Brute gets close, press <span class="k">SPACE</span> to FREEZE</b> every Brute for <b>8 seconds</b> — your escape move. Limited charges per level, so save them!<br><br>'+
   '<b>Controls</b><br>'+
-  '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &amp; strafe · <kbd>←</kbd><kbd>→</kbd> or <b>mouse</b> look · <kbd>Shift</kbd> sprint<br>'+
+  '<kbd>W</kbd> forward · <kbd>S</kbd> backward · <kbd>A</kbd> turn left · <kbd>D</kbd> turn right<br>'+
+  '<kbd>Q</kbd> / <kbd>E</kbd> step sideways (strafe) · <kbd>Shift</kbd> sprint<br>'+
+  '<b>Camera / look:</b> <kbd>←</kbd><kbd>→</kbd> turn · <kbd>↑</kbd><kbd>↓</kbd> look up / down · or move the <b>mouse</b> (click to lock)<br>'+
   '<kbd>Space</kbd> Freeze (8s) · <kbd>F</kbd> Fuse · <kbd>M</kbd> map size · <kbd>P</kbd> pause<br>'+
-  '<span style="color:#7c87bd">On phone: left side drag = move, right side drag = look, buttons = Freeze / Fuse.</span>';
+  '<span style="color:#7c87bd">On phone: drag LEFT side = move, drag RIGHT side = look around, buttons = Freeze / Fuse.</span>';
 $('howText').innerHTML=HOW;
 $('helpText').innerHTML=HOW;
 
@@ -582,19 +615,21 @@ window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 
 // mouse look (pointer lock)
 cv.addEventListener('click',()=>{ if(state==='play' && cv.requestPointerLock) cv.requestPointerLock(); });
-document.addEventListener('mousemove',e=>{ if(state==='play' && document.pointerLockElement===cv){ player.a+=e.movementX*0.0024; } });
+document.addEventListener('mousemove',e=>{ if(state==='play' && document.pointerLockElement===cv){
+  player.a+=e.movementX*0.0024;
+  player.pitch=Math.max(-170,Math.min(170,(player.pitch||0)-e.movementY*0.7)); } });
 
 // touch
 function tp(t){ const r=cv.getBoundingClientRect(); return {x:t.clientX-r.left, y:t.clientY-r.top, w:r.width}; }
 cv.addEventListener('touchstart',e=>{ if(state!=='play') return; e.preventDefault();
   for(const t of e.changedTouches){ const p=tp(t);
     if(p.x< p.w/2){ if(!touchMove) touchMove={id:t.identifier,sx:p.x,sy:p.y,dx:0,dy:0}; }
-    else { if(!touchLook) touchLook={id:t.identifier,sx:p.x,dx:0}; } }
+    else { if(!touchLook) touchLook={id:t.identifier,sx:p.x,sy:p.y,dx:0,dy:0}; } }
 },{passive:false});
 cv.addEventListener('touchmove',e=>{ if(state!=='play') return; e.preventDefault();
   for(const t of e.changedTouches){ const p=tp(t);
     if(touchMove&&t.identifier===touchMove.id){ touchMove.dx=p.x-touchMove.sx; touchMove.dy=p.y-touchMove.sy; }
-    if(touchLook&&t.identifier===touchLook.id){ touchLook.dx=(p.x-touchLook.sx); touchLook.sx=p.x; } }
+    if(touchLook&&t.identifier===touchLook.id){ touchLook.dx=(p.x-touchLook.sx); touchLook.dy=(p.y-touchLook.sy); touchLook.sx=p.x; touchLook.sy=p.y; } }
 },{passive:false});
 function tend(e){ for(const t of e.changedTouches){ if(touchMove&&t.identifier===touchMove.id) touchMove=null; if(touchLook&&t.identifier===touchLook.id) touchLook=null; } }
 cv.addEventListener('touchend',tend,{passive:false}); cv.addEventListener('touchcancel',tend,{passive:false});
